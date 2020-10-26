@@ -5,6 +5,8 @@ on: [push]
 env:
   GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
   GCP_REGION: ${{ secrets.GCP_REGION }}
+  IMAGE: docker-airflow
+  REGISTRY_HOSTNAME: asia.gcr.io
 
 jobs:
   build:
@@ -18,9 +20,15 @@ jobs:
           version: '275.0.0'
           service_account_email: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
           service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
       - name: Configure docker to use the gcloud cli
         run: gcloud auth configure-docker --quiet
       - name: Build a docker image
         run: docker build -t asia.gcr.io/${{ secrets.GCP_PROJECT_ID }}/docker-airflow:${GITHUB_SHA::7} .
       - name: Push the docker image
-        run: docker push asia.gcr.io/${{ secrets.GCP_PROJECT_ID }}/docker-airflow:${GITHUB_SHA::7}
+        run: |
+          export TAG=`echo ${GITHUB_SHA::7}`
+          echo $TAG
+          docker push "$REGISTRY_HOSTNAME"/"${{ secrets.GCP_PROJECT_ID }}"/"$IMAGE":"$TAG"
+          docker tag "$REGISTRY_HOSTNAME"/"${{ secrets.GCP_PROJECT_ID }}"/"$IMAGE":"$TAG" "$REGISTRY_HOSTNAME"/"${{ secrets.GCP_PROJECT_ID }}"/"$IMAGE":latest
+          docker push "$REGISTRY_HOSTNAME"/"${{ secrets.GCP_PROJECT_ID }}"/"$IMAGE":latest
